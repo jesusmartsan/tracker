@@ -13,7 +13,12 @@ Inicio:
 	
 	- Una vez tengamos lo anterior, calculamos la diferencia en segundos de arco,tanto en RA como en DEC
 	- Movemos el eje correspondiente la cantidad de segundos calculada anteriormente.
-	- Activamos el seguimiento y nos quedamos con el identificador del hilo para poder pararlo cuando sea necesario
+	- Activamos el seguimiento y nos quedamos con el identificador del hilo para poder pararlo cuando sea necesario (Esto solo es en el eje de AR)
+		El movimiento debe ser de 15.04 arcseg/seg para planetas y estrellas, el sol y la luna van por libre
+		Con la reducción de 1/144 y 1/3, el movimiento a realizar es 1 paso por segundo:
+			- 1/144 en el tornillo sin fin
+			- 1/3 en la transmision del motor al eje de AR
+		
 	
 Ejemplo punto 3/4:
 	- Estrella polar: 2-31-51/89-15-51 = 9111/(89*60+51)*60+51 = 323460 segundos
