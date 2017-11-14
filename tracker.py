@@ -2,6 +2,7 @@
 
 import RPi.GPIO as GPIO
 import time
+import math
  
 GPIO.setmode(GPIO.BCM)
   
@@ -10,16 +11,26 @@ coil_A_1_pin = 22
 coil_A_2_pin = 23
 coil_B_1_pin = 6
 coil_B_2_pin = 12
+pwma_control = 24
+pwmb_control = 25
    
 # Indicamos que los pines son de salida
 GPIO.setup(coil_A_1_pin, GPIO.OUT)
 GPIO.setup(coil_A_2_pin, GPIO.OUT)
 GPIO.setup(coil_B_1_pin, GPIO.OUT)
 GPIO.setup(coil_B_2_pin, GPIO.OUT)
+GPIO.setup(pwma_control, GPIO.OUT)
+GPIO.setup(pwmb_control, GPIO.OUT)
+
+pwma = GPIO.PWM(pwma_control,1600)
+pwmb = GPIO.PWM(pwmb_control,1600)
+
+pwma.start(0)
+pwmb.start(0)
 
 # Direccion de movimiento
 FORWARD = 1
-BACKWARD = -1
+BACK = -1
 
 # Modos de funcionamiento
 SINGLE = 1
@@ -28,17 +39,18 @@ INTERLEAVE = 3
 MICROSTEP = 4
 
 class Stepper:
-    MICROSTEPS = 8
-#    MICROSTEPSEQ = [[1,0,0,0],[1,0,0,1],[1,1,0,0],[0,1,0,0],[0,1,1,0],[0,0,1,0],[0,0,1,1],[0,0,0,1]]
-    MICROSTEPSEQ = [[1,0,0,1],[1,1,1,1],[0,1,0,1],[1,1,1,1],[0,1,1,0],[1,1,1,1],[1,0,1,0],[1,1,1,1]]
-    MICROSTEPSEQ = [[1,0,1,0],[1,1,1,1],[0,1,1,0],[1,1,1,1],[0,1,0,1],[1,1,1,1],[1,0,0,1],[1,1,1,1]]
+    MICROSTEPS = 16
+    STEPS = 4
+#    MICROSTEPSEQ = [[1,0,0,1],[1,1,1,1],[0,1,0,1],[1,1,1,1],[0,1,1,0],[1,1,1,1],[1,0,1,0],[1,1,1,1]]
+#    MICROSTEPSEQ = [[1,0,1,0],[1,1,1,1],[0,1,1,0],[1,1,1,1],[0,1,0,1],[1,1,1,1],[1,0,0,1],[1,1,1,1]]
+    STEPSEQ = [[1,0,1,0],[0,1,1,0],[0,1,0,1],[1,0,0,1]]
 
     def __init__(self,mode,direction):
         self.currentStep = 0
         self.currentMStep = 0
         self.mode = mode
         self.dir = direction
-        stepCount = 0
+        self.stepCount = 0
 
     def setMode(self,mode):
         self.mode = mode
@@ -54,67 +66,84 @@ class Stepper:
         GPIO.output(coil_B_2_pin, coils[3])
 
     def goStep(self):
+        # Por defecto, el valor de corriente es el 100%
+        pwma_val = pwmb_val = 100
+
+        # Control de pasos completos
         if (self.mode == SINGLE):
-            if (self.currentStep % 2):
-                # Caso raro, estamos en un paso impar, se multiplica por la direccion, que vale 1 o -1
-                self.currentStep += self.dir*self.MICROSTEPS//2
-            else:
+            self.currentStep += self.dir
+            self.stepCount += 1 
+
+        # Revisar la posibilidad de dobles pasos, aunque parece que no es necesario
+#        elif (self.mode == DOUBLE):
+#            if not (self.currentStep % 2):
+#                # Caso raro, estamos en un paso par, se multiplica por la direccion, que vale 1 o -1
+#                self.currentStep += self.dir*self.MICROSTEPS//2
+#            else: 
 #                self.currentStep += self.dir*self.MICROSTEPS
-                self.currentStep += self.dir*2
-                self.stepCount += 1 
-        elif (self.mode == DOUBLE):
-            if not (self.currentStep % 2):
-                # Caso raro, estamos en un paso par, se multiplica por la direccion, que vale 1 o -1
-                self.currentStep += self.dir*self.MICROSTEPS//2
-            else: 
-                self.currentStep += self.dir*self.MICROSTEPS
-        elif (self.mode == INTERLEAVE):
-            self.currentStep += self.dir*self.MICROSTEPS//2
+        # Revisar la posibilidad de medios pasos, aunque parece que no es necesario
+#        elif (self.mode == INTERLEAVE):
+#            self.currentStep += self.dir*self.MICROSTEPS//2
+
+        # Control por micropasos
         elif ((self.mode == MICROSTEP) and (not (self.currentMStep % self.MICROSTEPS))):
-            print self.currentMStep
-            self.currentStep += self.dir*2
+            print "Paso..."+str(self.currentStep)
+            self.currentStep += self.dir
             self.currentMStep += 1
             self.currentMStep %= self.MICROSTEPS
         elif (self.mode == MICROSTEP and (self.currentMStep % self.MICROSTEPS)):
-            coils = [1,1,1,1]
             self.currentMStep += 1
             self.currentMStep %= self.MICROSTEPS
 
-#        else:
-            # TODO: Devolver algo y parar la ejecucion
-#            print ("Modo no reconocido")
-#            return
-        
-#        self.currentStep += self.MICROSTEPS * 4
-#        self.currentStep %= self.MICROSTEPS * 4
+            pwma_val = math.sin(360.0*self.currentStep/64.0)
+            pwmb_val = math.cos(360.0*self.currentStep/64.0)
 
-        #print "Antes: "+str(self.currentStep)
-        self.currentStep %= self.MICROSTEPS
-        #print "Despues: "+str(self.currentStep)
+            if (pwma_val < 0):
+                pwma_val *= -1
+            if (pwmb_val < 0):
+                pwmb_val *= -1
 
-        # Si estamos usando micropasos, repetimos lo mismo
-        #coils = self.MICROSTEPSEQ[self.currentStep//(self.MICROSTEPS//2)]
-        coils = self.MICROSTEPSEQ[self.currentStep]
+        pwma.start(pwma_val)
+        pwmb.start(pwmb_val)
+
+        self.currentStep %= self.STEPS
         
+        coils = self.STEPSEQ[self.currentStep]
         print coils
-
+        
         self.setStep(coils)
 
 motor = Stepper(MICROSTEP, FORWARD)
-motor = Stepper(MICROSTEP, BACKWARD)
-steps = 2000
+steps = 3200
 
 GPIO.output(coil_A_1_pin, 0)
 GPIO.output(coil_A_2_pin, 0)
 GPIO.output(coil_B_1_pin, 0)
 GPIO.output(coil_B_2_pin, 0)
 
-for i in range(0,steps):
-    motor.goStep()
-    time.sleep(0.001)
+try: 
+    for i in range(0,steps):
+        motor.goStep()
+        time.sleep(0.001)
+except KeyboardInterrupt:
+    pass
+
+motor = Stepper(MICROSTEP, BACK)
+try: 
+    for i in range(0,steps):
+        motor.goStep()
+        time.sleep(0.001)
+except KeyboardInterrupt:
+    pass
+
 
 GPIO.output(coil_A_1_pin, 0)
 GPIO.output(coil_A_2_pin, 0)
 GPIO.output(coil_B_1_pin, 0)
 GPIO.output(coil_B_2_pin, 0)
+
+pwma.stop()
+pwmb.stop()
+GPIO.cleanup()
+
 
