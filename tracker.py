@@ -113,13 +113,92 @@ class Stepper:
         
         self.setStep(coils)
 
+class Coords:
+    def __init__(self,coord):
+        self.coord = coord
+        self.hour = coord.split("-")[0]
+        self.mins = coord.split("-")[1]
+        self secs = coord.split("-")[2]
+
+    # Devuelve la coordenada en segundos
+    def coordToSecs(self):
+        secs = self.hour * 60
+        secs += self.mins * 60
+        return secs
+
+    # Devuelve la coordenada en 
+    def getCoord(self):
+        return self.coord
+
+    # Diferencia de coordenadas en segundos
+    def diffCoordSecs(coord1,coord2):
+        return coord1.coordToSecs - coord2.coordToSecs
+
+
+class Astro:
+    def __init__(self,name,ra,dec):
+        self.name = name
+        self.ra = Coords(ra)
+        self.dec = Coords(dec)
+
+
+# Se ejecuta cuando el telescopio apunta a la polar para calibrar la posicion
+def polarAlign:
+    # Buscar coordenadas de la estrella polar en stellarium
+
+# Busca en stellarium
+def findAstro:
+    url = "http://localhost:8090/api/objects/find?str="+astro"+&info"
+
+    astro = input("Introduzca el nombre a buscar: ")
+
+# Pregunta por coordenadas de forma manual
+def manualCoords:
+    ar = input("Introduzca la coordenada Ascension Recta (H-M-S): ")
+    dec = input("Introduzca la coordenada Declinacion (H-M-S): ")
+
+# Mueve hacia el astro seleccionado y hace seguimiento
+def move:
+
+# Detiene el seguimiento
+def stopMotion:
+
+# TEST
 motor = Stepper(MICROSTEP, FORWARD)
 steps = 3200
 
+# Inicializamos los motores
 GPIO.output(coil_A_1_pin, 0)
 GPIO.output(coil_A_2_pin, 0)
 GPIO.output(coil_B_1_pin, 0)
 GPIO.output(coil_B_2_pin, 0)
+
+while True:
+    print "Selecciona una de las siguientes opciones"
+    print "1.- Alineacion Polar: Seleccione esta opcion cuando el telescopio apunte a la estrella polar"
+    print "2.- Buscar astro: Busca un astro en la BD"
+    print "3.- Introducir coordenadas manualmente (formato H-M-S(AR)/H-M-S(DEC))"
+    print "4.- Mover telescopio a las coordenadas seleccionadas o al astro seleccionado"
+    print "5.- Parar el seguimiento del astro seleccionado"
+    print "Opcion: "
+    opt = input ("Opcion: ")
+
+    if (opt == 1):
+        polarAlign
+    elif (opt == 2):
+        findAstro
+    elif (opt == 3):
+        manualCoords
+    elif (opt == 4):
+        move()
+    elif (opt == 5):
+        stopMotion
+    else:
+        print "Error"
+
+
+
+
 
 try: 
     for i in range(0,steps):
