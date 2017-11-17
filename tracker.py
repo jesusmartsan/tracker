@@ -113,6 +113,12 @@ class Stepper:
         
         self.setStep(coils)
 
+    def reset(self):
+        GPIO.output(coil_A_1_pin, 0)
+        GPIO.output(coil_A_2_pin, 0)
+        GPIO.output(coil_B_1_pin, 0)
+        GPIO.output(coil_B_2_pin, 0)
+
 class Coords:
     def __init__(self,coord):
         self.coord = coord
@@ -141,6 +147,11 @@ class Astro:
         self.ra = Coords(ra)
         self.dec = Coords(dec)
 
+    def getRA(self):
+        return self.ra
+
+    def getDEC(self):
+        return self.dec
 
 # Se ejecuta cuando el telescopio apunta a la polar para calibrar la posicion
 def polarAlign:
@@ -150,28 +161,62 @@ def polarAlign:
 def findAstro:
     url = "http://localhost:8090/api/objects/find?str="+astro"+&info"
 
-    astro = input("Introduzca el nombre a buscar: ")
+    astrostr = input("Introduzca el nombre a buscar: ")
+    # Parsear la salida para obtener AR y DEC
+    ra = ""
+    dec = ""
+    astro = Astro(ra,dec)
+
+    return astro
+
 
 # Pregunta por coordenadas de forma manual
 def manualCoords:
     ar = input("Introduzca la coordenada Ascension Recta (H-M-S): ")
     dec = input("Introduzca la coordenada Declinacion (H-M-S): ")
 
+    astro = Astro(ra,dec)
+    return astro
+
+def track:
+    sleepTime = 1 // 16
+    motor.setMode(MICROSTEP)
+
+    while True:
+    # Velocidad de seguimiento (16 micropasos/seg) = 1 paso por segundo
+        motor.goStep()
+        time.sleep(sleepTime)
+
 # Mueve hacia el astro seleccionado y hace seguimiento
-def move:
+def move(currentAstro, newAstro):
+    secsRA = Coords.diffCoordsSecs(currentAstro.getRA, newAstro.getRA)
+    secsDEC = Coords.diffCoordsSecs(currentAstro.getDEC, newAstro.getDEC)
+
+    nSteps = secsRA // 15
+
+    motor = Stepper(SINGLE, FORWARD)
+    motor.reset()
+
+    # Movimiento rapido inicial
+    for i in range (0..secsRA):
+        motor.goStep()
+        time.sleep(0.001)
+
+    motor.reset()
+    trackingThread = threading.Thread(target=track)
+
+    return trackingThread
+
 
 # Detiene el seguimiento
-def stopMotion:
+def stopMotion(motionThreadId):
 
 # TEST
 motor = Stepper(MICROSTEP, FORWARD)
 steps = 3200
 
 # Inicializamos los motores
-GPIO.output(coil_A_1_pin, 0)
-GPIO.output(coil_A_2_pin, 0)
-GPIO.output(coil_B_1_pin, 0)
-GPIO.output(coil_B_2_pin, 0)
+motor.reset()
 
 while True:
     print "Selecciona una de las siguientes opciones"
@@ -186,17 +231,17 @@ while True:
     if (opt == 1):
         polarAlign
     elif (opt == 2):
-        findAstro
+        newAstro = findAstro
     elif (opt == 3):
-        manualCoords
+        newAstro = manualCoords
     elif (opt == 4):
-        move()
+        motionThreadId = move(currentAstro, newAstro)
     elif (opt == 5):
-        stopMotion
+        stopMotion(motionThreadId)
     else:
         print "Error"
 
-
+motor.reset()
 
 
 
@@ -216,10 +261,6 @@ except KeyboardInterrupt:
     pass
 
 
-GPIO.output(coil_A_1_pin, 0)
-GPIO.output(coil_A_2_pin, 0)
-GPIO.output(coil_B_1_pin, 0)
-GPIO.output(coil_B_2_pin, 0)
 
 pwma.stop()
 pwmb.stop()
