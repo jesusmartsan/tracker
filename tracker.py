@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+# TODO: Control de errores
+
 import RPi.GPIO as GPIO
 import time
 import math
