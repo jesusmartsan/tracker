@@ -3,6 +3,7 @@
 import RPi.GPIO as GPIO
 import time
 import math
+import threading
  
 GPIO.setmode(GPIO.BCM)
   
@@ -178,7 +179,7 @@ def manualCoords:
     astro = Astro(ra,dec)
     return astro
 
-def track:
+def track(motor):
     sleepTime = 1 // 16
     motor.setMode(MICROSTEP)
 
@@ -188,28 +189,41 @@ def track:
         time.sleep(sleepTime)
 
 # Mueve hacia el astro seleccionado y hace seguimiento
-def move(currentAstro, newAstro):
+def move(currentAstro, newAstro, motorAR, motorDEC):
     secsRA = Coords.diffCoordsSecs(currentAstro.getRA, newAstro.getRA)
     secsDEC = Coords.diffCoordsSecs(currentAstro.getDEC, newAstro.getDEC)
 
-    nSteps = secsRA // 15
+    nStepsRA = secsRA // 15
+    nStepsDEC = secsDEC // 15
 
-    motor = Stepper(SINGLE, FORWARD)
-    motor.reset()
+    motorAR.reset
+    motorAR.setMode(SINGLE)
+    motorDEC.reset
+    motorDEC.setMode(SINGLE)
 
-    # Movimiento rapido inicial
+    # Buscamos la coordenada DEC
     for i in range (0..secsRA):
-        motor.goStep()
+        motorDEC.goStep()
+        time.sleep(0.001)
+   
+    # Buscamos la coordenada AR
+    for i in range (0..secsRA):
+        motorRA.goStep()
         time.sleep(0.001)
 
-    motor.reset()
-    trackingThread = threading.Thread(target=track)
+    motorAR.reset()
+    motorDEC.reset()
+
+    trackingThread = threading.Thread(target=track, args=(motorRA))
+    trackingThread.start()
 
     return trackingThread
 
 
 # Detiene el seguimiento
-def stopMotion(motionThreadId):
+def stopMotion(motionThreadId, motorRA):
+    trackingThread.stop()
+    motorRA.reset
 
 # TEST
 motor = Stepper(MICROSTEP, FORWARD)
@@ -218,52 +232,45 @@ steps = 3200
 # Inicializamos los motores
 motor.reset()
 
-while True:
-    print "Selecciona una de las siguientes opciones"
-    print "1.- Alineacion Polar: Seleccione esta opcion cuando el telescopio apunte a la estrella polar"
-    print "2.- Buscar astro: Busca un astro en la BD"
-    print "3.- Introducir coordenadas manualmente (formato H-M-S(AR)/H-M-S(DEC))"
-    print "4.- Mover telescopio a las coordenadas seleccionadas o al astro seleccionado"
-    print "5.- Parar el seguimiento del astro seleccionado"
-    print "Opcion: "
-    opt = input ("Opcion: ")
+try:
+    while True:
+        print "Selecciona una de las siguientes opciones"
+        print "1.- Alineacion Polar: Seleccione esta opcion cuando el telescopio apunte a la estrella polar"
+        print "2.- Buscar astro: Busca un astro en la BD"
+        print "3.- Introducir coordenadas manualmente (formato H-M-S(AR)/H-M-S(DEC))"
+        print "4.- Mover telescopio a las coordenadas seleccionadas o al astro seleccionado"
+        print "5.- Parar el seguimiento del astro seleccionado"
+        print "6.- Salir"
+        print "Opcion: "
+        opt = input ("Opcion: ")
 
-    if (opt == 1):
-        polarAlign
-    elif (opt == 2):
-        newAstro = findAstro
-    elif (opt == 3):
-        newAstro = manualCoords
-    elif (opt == 4):
-        motionThreadId = move(currentAstro, newAstro)
-    elif (opt == 5):
-        stopMotion(motionThreadId)
-    else:
-        print "Error"
-
-motor.reset()
-
-
-
-try: 
-    for i in range(0,steps):
-        motor.goStep()
-        time.sleep(0.001)
+        if (opt == 1):
+            polarAlign
+        elif (opt == 2):
+            newAstro = findAstro
+        elif (opt == 3):
+            newAstro = manualCoords
+        elif (opt == 4):
+            motionThreadId = move(currentAstro, newAstro, motorRA, motorDEC)
+        elif (opt == 5):
+            stopMotion(motionThreadId, motorRA)
+        elif (opt == 6):
+            motorRA.reset()
+            motorDEC.reset()
+            pwma.stop()
+            pwmb.stop()
+            GPIO.cleanup()
+            break
+        else:
+            print "Error"
 except KeyboardInterrupt:
-    pass
-
-motor = Stepper(MICROSTEP, BACK)
-try: 
-    for i in range(0,steps):
-        motor.goStep()
-        time.sleep(0.001)
-except KeyboardInterrupt:
-    pass
+    motorRA.reset()
+    motorDEC.reset()
+    pwma.stop()
+    pwmb.stop()
+    GPIO.cleanup()
 
 
 
-pwma.stop()
-pwmb.stop()
-GPIO.cleanup()
 
 
