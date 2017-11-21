@@ -127,7 +127,7 @@ class Coords:
         self.coord = coord
         self.hour = coord.split("-")[0]
         self.mins = coord.split("-")[1]
-        self secs = coord.split("-")[2]
+        self.secs = coord.split("-")[2]
 
     # Devuelve la coordenada en segundos
     def coordToSecs(self):
@@ -157,12 +157,13 @@ class Astro:
         return self.dec
 
 # Se ejecuta cuando el telescopio apunta a la polar para calibrar la posicion
-def polarAlign:
+def polarAlign():
+    return Astro("polar", "2-31-50", "89-15-51")
     # Buscar coordenadas de la estrella polar en stellarium
 
 # Busca en stellarium
-def findAstro:
-    url = "http://localhost:8090/api/objects/find?str="+astro"+&info"
+def findAstro():
+#    url = "http://localhost:8090/api/objects/find?str="+astro"+&info"
 
     astrostr = input("Introduzca el nombre a buscar: ")
     # Parsear la salida para obtener AR y DEC
@@ -174,7 +175,7 @@ def findAstro:
 
 
 # Pregunta por coordenadas de forma manual
-def manualCoords:
+def manualCoords():
     ar = input("Introduzca la coordenada Ascension Recta (H-M-S): ")
     dec = input("Introduzca la coordenada Declinacion (H-M-S): ")
 
@@ -247,7 +248,7 @@ try:
         opt = input ("Opcion: ")
 
         if (opt == 1):
-            polarAlign
+            currentAstro = polarAlign
         elif (opt == 2):
             newAstro = findAstro
         elif (opt == 3):
