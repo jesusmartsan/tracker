@@ -48,10 +48,12 @@ class Stepper:
 #    MICROSTEPSEQ = [[1,0,1,0],[1,1,1,1],[0,1,1,0],[1,1,1,1],[0,1,0,1],[1,1,1,1],[1,0,0,1],[1,1,1,1]]
     STEPSEQ = [[1,0,1,0],[0,1,1,0],[0,1,0,1],[1,0,0,1]]
 
-    def __init__(self,mode,direction):
+    def __init__(self,mode,direction,pwma,pwmb):
         self.currentStep = 0
         self.currentMStep = 0
         self.mode = mode
+        self.pwma = pwma
+        self.pwmb = pwmb
         self.dir = direction
         self.stepCount = 0
 
@@ -90,7 +92,7 @@ class Stepper:
 
         # Control por micropasos
         elif ((self.mode == MICROSTEP) and (not (self.currentMStep % self.MICROSTEPS))):
-            print "Paso..."+str(self.currentStep)
+            #print "Paso..."+str(self.currentStep)
             self.currentStep += self.dir
             self.currentMStep += 1
             self.currentMStep %= self.MICROSTEPS
@@ -105,15 +107,13 @@ class Stepper:
                 pwma_val *= -1
             if (pwmb_val < 0):
                 pwmb_val *= -1
-        print pwma_val
 
-        pwma.start(pwma_val)
-        pwmb.start(pwmb_val)
+        self.pwma.start(pwma_val)
+        self.pwmb.start(pwmb_val)
 
         self.currentStep %= self.STEPS
         
         coils = self.STEPSEQ[self.currentStep]
-        print coils
         
         self.setStep(coils)
 
@@ -186,22 +186,33 @@ def manualCoords():
     astro = Astro("test",ra,dec)
     return astro
 
-def track(motor):
-    sleepTime = 1 // 16
-    motor.setMode(MICROSTEP)
+class TrackThread(threading.Thread):
+    def _bootstrap(self):
+        super()._bootstrap()
 
-    while True:
-    # Velocidad de seguimiento (16 micropasos/seg) = 1 paso por segundo
-        motor.goStep()
-        time.sleep(sleepTime)
-    motor.reset()
+    def stop(self):
+        self.stop = True
+
+    def track(self,motor):
+        sleepTime = 1 // 16
+        motor.setMode(MICROSTEP)
+
+        while not self.stop:
+        # Velocidad de seguimiento (16 micropasos/seg) = 1 paso por segundo
+            motor.goStep()
+            time.sleep(sleepTime)
+        motor.reset()
 
 # Mueve hacia el astro seleccionado y hace seguimiento
 def move(currentAstro, newAstro, motorAR, motorDEC):
     secsRA = Coords.diffCoordSecs(currentAstro.getRA(), newAstro.getRA())
     secsDEC = Coords.diffCoordSecs(currentAstro.getDEC(), newAstro.getDEC())
 
-    nStepsRA = int(secsRA // 15)
+    print currentAstro.getRA().coordToSecs()
+    print newAstro.getRA().coordToSecs()
+    print secsRA
+
+    nStepsRA = int(secsRA)# // 15)
     nStepsDEC = 0#secsDEC // 15
 
     motorRA.reset()
@@ -216,6 +227,7 @@ def move(currentAstro, newAstro, motorAR, motorDEC):
         time.sleep(0.001)
    
     # Buscamos la coordenada AR
+    print nStepsRA
     for i in range (0,nStepsRA):
         motorRA.goStep()
         time.sleep(0.001)
@@ -223,17 +235,18 @@ def move(currentAstro, newAstro, motorAR, motorDEC):
     motorAR.reset()
 #    motorDEC.reset()
 
-#    trackingThread = threading.Thread(target=track, args=(motorRA))
-#    trackingThread.start()
+    trackingThread = TrackThread(target=track, args=(motorRA,))
+    trackingThread.start()
 
-    return 0
-#    return trackingThread
+#    return 0
+    return trackingThread
 
 
 # Detiene el seguimiento
-def stopMotion(motionThreadId, motorRA):
-    trackingThread.stop()
-    motorRA.reset
+def stopMotion(motionThread, motorRA):
+    motionThread.stop()
+    motionThread.join()
+    motorRA.reset()
 
 # TEST
 #motor = Stepper(MICROSTEP, FORWARD)
@@ -242,7 +255,7 @@ def stopMotion(motionThreadId, motorRA):
 # Inicializamos los motores
 #motor.reset()
 
-motorRA = Stepper(MICROSTEP, FORWARD)
+motorRA = Stepper(MICROSTEP, FORWARD, pwma, pwmb)
 #motorDEC = Stepper(MICROSTEP, FORWARD)
 
 try:
@@ -263,9 +276,9 @@ try:
         elif (opt == 3):
             newAstro = manualCoords()
         elif (opt == 4):
-            motionThreadId = move(currentAstro, newAstro, motorRA, motorDEC=None)
+            motionThread = move(currentAstro, newAstro, motorRA, motorDEC=None)
         elif (opt == 5):
-            stopMotion(motionThreadId, motorRA)
+            stopMotion(motionThread, motorRA)
         elif (opt == 6):
             motorRA.reset()
             motorDEC.reset()
