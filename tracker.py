@@ -105,6 +105,7 @@ class Stepper:
                 pwma_val *= -1
             if (pwmb_val < 0):
                 pwmb_val *= -1
+        print pwma_val
 
         pwma.start(pwma_val)
         pwmb.start(pwmb_val)
@@ -131,8 +132,9 @@ class Coords:
 
     # Devuelve la coordenada en segundos
     def coordToSecs(self):
-        secs = self.hour * 60
-        secs += self.mins * 60
+        secs = int(self.hour) * 60
+        secs += int(self.mins) * 60
+        secs += int(self.secs)
         return secs
 
     # Devuelve la coordenada en 
@@ -141,7 +143,7 @@ class Coords:
 
     # Diferencia de coordenadas en segundos
     def diffCoordSecs(coord1,coord2):
-        return coord1.coordToSecs - coord2.coordToSecs
+        return float(coord1.coordToSecs()) - float(coord2.coordToSecs())
 
 
 class Astro:
@@ -176,10 +178,12 @@ def findAstro():
 
 # Pregunta por coordenadas de forma manual
 def manualCoords():
-    ar = input("Introduzca la coordenada Ascension Recta (H-M-S): ")
-    dec = input("Introduzca la coordenada Declinacion (H-M-S): ")
+#    ra = input("Introduzca la coordenada Ascension Recta (H-M-S): ")
+#    dec = input("Introduzca la coordenada Declinacion (H-M-S): ")
+    ra="5-22-32"
+    dec="79-13-54"
 
-    astro = Astro(ra,dec)
+    astro = Astro("test",ra,dec)
     return astro
 
 def track(motor):
@@ -190,37 +194,40 @@ def track(motor):
     # Velocidad de seguimiento (16 micropasos/seg) = 1 paso por segundo
         motor.goStep()
         time.sleep(sleepTime)
+    motor.reset()
 
 # Mueve hacia el astro seleccionado y hace seguimiento
 def move(currentAstro, newAstro, motorAR, motorDEC):
-    secsRA = Coords.diffCoordsSecs(currentAstro.getRA, newAstro.getRA)
-    secsDEC = Coords.diffCoordsSecs(currentAstro.getDEC, newAstro.getDEC)
+    secsRA = Coords.diffCoordSecs(currentAstro.getRA(), newAstro.getRA())
+    secsDEC = Coords.diffCoordSecs(currentAstro.getDEC(), newAstro.getDEC())
 
-    nStepsRA = secsRA // 15
-    nStepsDEC = secsDEC // 15
+    nStepsRA = int(secsRA // 15)
+    nStepsDEC = 0#secsDEC // 15
 
-    motorAR.reset
-    motorAR.setMode(SINGLE)
-    motorDEC.reset
-    motorDEC.setMode(SINGLE)
+    motorRA.reset()
+    motorRA.setMode(SINGLE)
+
+##    motorDEC.reset
+#    motorDEC.setMode(SINGLE)
 
     # Buscamos la coordenada DEC
-    for i in range (0..secsRA):
-        motorDEC.goStep()
+    for i in range (0,nStepsDEC):
+#        motorDEC.goStep()
         time.sleep(0.001)
    
     # Buscamos la coordenada AR
-    for i in range (0..secsRA):
+    for i in range (0,nStepsRA):
         motorRA.goStep()
         time.sleep(0.001)
 
     motorAR.reset()
-    motorDEC.reset()
+#    motorDEC.reset()
 
-    trackingThread = threading.Thread(target=track, args=(motorRA))
-    trackingThread.start()
+#    trackingThread = threading.Thread(target=track, args=(motorRA))
+#    trackingThread.start()
 
-    return trackingThread
+    return 0
+#    return trackingThread
 
 
 # Detiene el seguimiento
@@ -229,11 +236,14 @@ def stopMotion(motionThreadId, motorRA):
     motorRA.reset
 
 # TEST
-motor = Stepper(MICROSTEP, FORWARD)
-steps = 3200
+#motor = Stepper(MICROSTEP, FORWARD)
+#steps = 3200
 
 # Inicializamos los motores
-motor.reset()
+#motor.reset()
+
+motorRA = Stepper(MICROSTEP, FORWARD)
+#motorDEC = Stepper(MICROSTEP, FORWARD)
 
 try:
     while True:
@@ -244,17 +254,16 @@ try:
         print "4.- Mover telescopio a las coordenadas seleccionadas o al astro seleccionado"
         print "5.- Parar el seguimiento del astro seleccionado"
         print "6.- Salir"
-        print "Opcion: "
         opt = input ("Opcion: ")
 
         if (opt == 1):
-            currentAstro = polarAlign
+            currentAstro = polarAlign()
         elif (opt == 2):
-            newAstro = findAstro
+            newAstro = findAstro()
         elif (opt == 3):
-            newAstro = manualCoords
+            newAstro = manualCoords()
         elif (opt == 4):
-            motionThreadId = move(currentAstro, newAstro, motorRA, motorDEC)
+            motionThreadId = move(currentAstro, newAstro, motorRA, motorDEC=None)
         elif (opt == 5):
             stopMotion(motionThreadId, motorRA)
         elif (opt == 6):
@@ -267,6 +276,7 @@ try:
         else:
             print "Error"
 except KeyboardInterrupt:
+    stopMotion(motionThreadId, motorRA)
     motorRA.reset()
     motorDEC.reset()
     pwma.stop()
