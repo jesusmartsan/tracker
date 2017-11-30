@@ -6,158 +6,21 @@ import RPi.GPIO as GPIO
 import time
 import math
 import threading
- 
+import Stepper
+import Astro
+import Coords
+import Tracking
+
 GPIO.setmode(GPIO.BCM)
   
 # Fijamos los pines a utilizar para cada una de las bobinas
-coil_A_1_pin = 22
-coil_A_2_pin = 23
-coil_B_1_pin = 6
-coil_B_2_pin = 12
+a1_pin = 22
+a2_pin = 23
+b1_pin = 6
+b2_pin = 12
 pwma_control = 24
 pwmb_control = 25
    
-# Indicamos que los pines son de salida
-GPIO.setup(coil_A_1_pin, GPIO.OUT)
-GPIO.setup(coil_A_2_pin, GPIO.OUT)
-GPIO.setup(coil_B_1_pin, GPIO.OUT)
-GPIO.setup(coil_B_2_pin, GPIO.OUT)
-GPIO.setup(pwma_control, GPIO.OUT)
-GPIO.setup(pwmb_control, GPIO.OUT)
-
-pwma = GPIO.PWM(pwma_control,1600)
-pwmb = GPIO.PWM(pwmb_control,1600)
-
-pwma.start(0)
-pwmb.start(0)
-
-# Direccion de movimiento
-FORWARD = 1
-BACK = -1
-
-# Modos de funcionamiento
-SINGLE = 1
-DOUBLE = 2
-INTERLEAVE = 3
-MICROSTEP = 4
-
-class Stepper:
-    MICROSTEPS = 16
-    STEPS = 4
-#    MICROSTEPSEQ = [[1,0,0,1],[1,1,1,1],[0,1,0,1],[1,1,1,1],[0,1,1,0],[1,1,1,1],[1,0,1,0],[1,1,1,1]]
-#    MICROSTEPSEQ = [[1,0,1,0],[1,1,1,1],[0,1,1,0],[1,1,1,1],[0,1,0,1],[1,1,1,1],[1,0,0,1],[1,1,1,1]]
-    STEPSEQ = [[1,0,1,0],[0,1,1,0],[0,1,0,1],[1,0,0,1]]
-
-    def __init__(self,mode,direction,pwma,pwmb):
-        self.currentStep = 0
-        self.currentMStep = 0
-        self.mode = mode
-        self.pwma = pwma
-        self.pwmb = pwmb
-        self.dir = direction
-        self.stepCount = 0
-
-    def setMode(self,mode):
-        self.mode = mode
-
-    def setDirection(self,direction):
-        self.dir = direccion
-
-    def setStep(self,coils):
-#        print coils
-        GPIO.output(coil_A_1_pin, coils[0])
-        GPIO.output(coil_A_2_pin, coils[1])
-        GPIO.output(coil_B_1_pin, coils[2])
-        GPIO.output(coil_B_2_pin, coils[3])
-
-    def goStep(self):
-        # Por defecto, el valor de corriente es el 100%
-        pwma_val = pwmb_val = 100
-
-        # Control de pasos completos
-        if (self.mode == SINGLE):
-            self.currentStep += self.dir
-            self.stepCount += 1 
-
-        # Revisar la posibilidad de dobles pasos, aunque parece que no es necesario
-#        elif (self.mode == DOUBLE):
-#            if not (self.currentStep % 2):
-#                # Caso raro, estamos en un paso par, se multiplica por la direccion, que vale 1 o -1
-#                self.currentStep += self.dir*self.MICROSTEPS//2
-#            else: 
-#                self.currentStep += self.dir*self.MICROSTEPS
-        # Revisar la posibilidad de medios pasos, aunque parece que no es necesario
-#        elif (self.mode == INTERLEAVE):
-#            self.currentStep += self.dir*self.MICROSTEPS//2
-
-        # Control por micropasos
-        elif ((self.mode == MICROSTEP) and (not (self.currentMStep % self.MICROSTEPS))):
-            #print "Paso..."+str(self.currentStep)
-            self.currentStep += self.dir
-            self.currentMStep += 1
-            self.currentMStep %= self.MICROSTEPS
-        elif (self.mode == MICROSTEP and (self.currentMStep % self.MICROSTEPS)):
-            self.currentMStep += 1
-            self.currentMStep %= self.MICROSTEPS
-
-            pwma_val = math.sin(360.0*self.currentStep/64.0)
-            pwmb_val = math.cos(360.0*self.currentStep/64.0)
-
-            if (pwma_val < 0):
-                pwma_val *= -1
-            if (pwmb_val < 0):
-                pwmb_val *= -1
-
-        self.pwma.start(pwma_val)
-        self.pwmb.start(pwmb_val)
-
-        self.currentStep %= self.STEPS
-        
-        coils = self.STEPSEQ[self.currentStep]
-        
-        self.setStep(coils)
-
-    def reset(self):
-        GPIO.output(coil_A_1_pin, 0)
-        GPIO.output(coil_A_2_pin, 0)
-        GPIO.output(coil_B_1_pin, 0)
-        GPIO.output(coil_B_2_pin, 0)
-
-class Coords:
-    def __init__(self,coord):
-        self.coord = coord
-        self.hour = coord.split("-")[0]
-        self.mins = coord.split("-")[1]
-        self.secs = coord.split("-")[2]
-
-    # Devuelve la coordenada en segundos
-    def coordToSecs(self):
-        secs = int(self.hour) * 60
-        secs += int(self.mins) * 60
-        secs += int(self.secs)
-        return secs
-
-    # Devuelve la coordenada en 
-    def getCoord(self):
-        return self.coord
-
-    # Diferencia de coordenadas en segundos
-    def diffCoordSecs(coord1,coord2):
-        return float(coord1.coordToSecs()) - float(coord2.coordToSecs())
-
-
-class Astro:
-    def __init__(self,name,ra,dec):
-        self.name = name
-        self.ra = Coords(ra)
-        self.dec = Coords(dec)
-
-    def getRA(self):
-        return self.ra
-
-    def getDEC(self):
-        return self.dec
-
 # Se ejecuta cuando el telescopio apunta a la polar para calibrar la posicion
 def polarAlign():
     return Astro("polar", "2-31-50", "89-15-51")
@@ -186,23 +49,6 @@ def manualCoords():
     astro = Astro("test",ra,dec)
     return astro
 
-class TrackThread(threading.Thread):
-    def _bootstrap(self):
-        super()._bootstrap()
-
-    def stop(self):
-        self.stop = True
-
-    def track(self,motor):
-        sleepTime = 1 // 16
-        motor.setMode(MICROSTEP)
-
-        while not self.stop:
-        # Velocidad de seguimiento (16 micropasos/seg) = 1 paso por segundo
-            motor.goStep()
-            time.sleep(sleepTime)
-        motor.reset()
-
 # Mueve hacia el astro seleccionado y hace seguimiento
 def move(currentAstro, newAstro, motorAR, motorDEC):
     secsRA = Coords.diffCoordSecs(currentAstro.getRA(), newAstro.getRA())
@@ -212,7 +58,7 @@ def move(currentAstro, newAstro, motorAR, motorDEC):
     print newAstro.getRA().coordToSecs()
     print secsRA
 
-    nStepsRA = int(secsRA)# // 15)
+    nStepsRA = int(secsRA*3*144)# // 15)
     nStepsDEC = 0#secsDEC // 15
 
     motorRA.reset()
@@ -239,6 +85,7 @@ def move(currentAstro, newAstro, motorAR, motorDEC):
     trackingThread.start()
 
 #    return 0
+    trackingThread = None
     return trackingThread
 
 
@@ -255,7 +102,7 @@ def stopMotion(motionThread, motorRA):
 # Inicializamos los motores
 #motor.reset()
 
-motorRA = Stepper(MICROSTEP, FORWARD, pwma, pwmb)
+motorRA = Stepper(MICROSTEP, FORWARD, pwma_control, pwmb_control, a1_pin, a2_pin, b1_pin, b2_pin)
 #motorDEC = Stepper(MICROSTEP, FORWARD)
 
 try:
