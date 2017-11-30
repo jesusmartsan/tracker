@@ -6,10 +6,10 @@ import RPi.GPIO as GPIO
 import time
 import math
 import threading
-import Stepper
-import Astro
-import Coords
-import Tracking
+from Stepper import *
+from Astro import *
+from Coords import *
+from Tracking import *
 
 GPIO.setmode(GPIO.BCM)
   
@@ -102,7 +102,7 @@ def stopMotion(motionThread, motorRA):
 # Inicializamos los motores
 #motor.reset()
 
-motorRA = Stepper(MICROSTEP, FORWARD, pwma_control, pwmb_control, a1_pin, a2_pin, b1_pin, b2_pin)
+motorRA = Stepper(pwma_control, pwmb_control, a1_pin, a2_pin, b1_pin, b2_pin)
 #motorDEC = Stepper(MICROSTEP, FORWARD)
 
 try:

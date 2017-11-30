@@ -22,13 +22,11 @@ class Stepper:
 #    MICROSTEPSEQ = [[1,0,1,0],[1,1,1,1],[0,1,1,0],[1,1,1,1],[0,1,0,1],[1,1,1,1],[1,0,0,1],[1,1,1,1]]
     STEPSEQ = [[1,0,1,0],[0,1,1,0],[0,1,0,1],[1,0,0,1]]
 
-    def __init__(self,mode,direction,pwma_control,pwmb_control,a1_pin,a2_pin,b1_pin,b2_pin):
+    def __init__(self,pwma_control,pwmb_control,a1_pin,a2_pin,b1_pin,b2_pin):
         self.currentStep = 0
         self.currentMStep = 0
-        self.mode = mode
-        self.pwma = pwma
-        self.pwmb = pwmb
-        self.dir = direction
+        self.mode = SINGLE
+        self.dir = FORWARD
         self.stepCount = 0
         self.a1_pin = a1_pin
         self.a2_pin = a2_pin
@@ -102,8 +100,8 @@ class Stepper:
         self.setStep(coils)
 
     def reset(self):
-        GPIO.output(coil_A_1_pin, 0)
-        GPIO.output(coil_A_2_pin, 0)
-        GPIO.output(coil_B_1_pin, 0)
-        GPIO.output(coil_B_2_pin, 0)
+        GPIO.output(self.a1_pin, 0)
+        GPIO.output(self.a2_pin, 0)
+        GPIO.output(self.b1_pin, 0)
+        GPIO.output(self.b2_pin, 0)
 

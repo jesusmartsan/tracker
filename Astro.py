@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from Coords import *
 
 class Astro:
     def __init__(self,name,ra,dec):
