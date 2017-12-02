@@ -9,7 +9,7 @@ class Coords:
 
     # Devuelve la coordenada en segundos
     def coordToSecs(self):
-        secs = int(self.hour) * 60
+        secs = int(self.hour) * 3600
         secs += int(self.mins) * 60
         secs += int(self.secs)
         return secs

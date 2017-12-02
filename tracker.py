@@ -44,6 +44,7 @@ def manualCoords():
 #    ra = input("Introduzca la coordenada Ascension Recta (H-M-S): ")
 #    dec = input("Introduzca la coordenada Declinacion (H-M-S): ")
     ra="5-22-32"
+    ra="1-0-0"
     dec="79-13-54"
 
     astro = Astro("test",ra,dec)
@@ -51,21 +52,33 @@ def manualCoords():
 
 # Mueve hacia el astro seleccionado y hace seguimiento
 def move(currentAstro, newAstro, motorAR, motorDEC):
-    secsRA = Coords.diffCoordSecs(currentAstro.getRA(), newAstro.getRA())
-    secsDEC = Coords.diffCoordSecs(currentAstro.getDEC(), newAstro.getDEC())
+    secsRA = Coords.diffCoordSecs(newAstro.getRA(), currentAstro.getRA())
+    secsDEC = Coords.diffCoordSecs(newAstro.getDEC(), currentAstro.getDEC())
 
     print currentAstro.getRA().coordToSecs()
     print newAstro.getRA().coordToSecs()
-    print secsRA
+    print "secsRA = "+str(secsRA)
 
-    nStepsRA = int(secsRA*3*144)# // 15)
     nStepsDEC = 0#secsDEC // 15
+    nStepsRA = int(secsRA)
 
-    motorRA.reset()
-    motorRA.setMode(SINGLE)
+#    if (nStepsDEC < 0):
+#        nStepsDEC *= -1
+#        motorDEC.setDirection(Stepper.BACK)
+#    else:
+#        motorDEC.setDirection(Stepper.FORWARD)
+
+    if (nStepsRA < 0):
+        nStepsRA *= -1
+        motorRA.setDirection(Stepper.BACK)
+    else:
+        motorRA.setDirection(Stepper.FORWARD)
 
 ##    motorDEC.reset
 #    motorDEC.setMode(SINGLE)
+
+    motorRA.reset()
+    motorRA.setMode(Stepper.SINGLE)
 
     # Buscamos la coordenada DEC
     for i in range (0,nStepsDEC):
@@ -73,34 +86,31 @@ def move(currentAstro, newAstro, motorAR, motorDEC):
         time.sleep(0.001)
    
     # Buscamos la coordenada AR
-    print nStepsRA
-    for i in range (0,nStepsRA):
+    for i in range (0,nStepsRA//10):
         motorRA.goStep()
         time.sleep(0.001)
 
-    motorAR.reset()
+    motorRA.reset()
 #    motorDEC.reset()
 
-    trackingThread = TrackThread(target=track, args=(motorRA,))
-    trackingThread.start()
+    motorRA.setDirection(Stepper.FORWARD)
+    motorRA.setMode(Stepper.MICROSTEP)
+
+    track = Tracking(motorRA)
+    #trackingThread = track.run()
+
+    print "paso"
 
 #    return 0
-    trackingThread = None
-    return trackingThread
+    return track
 
 
 # Detiene el seguimiento
 def stopMotion(motionThread, motorRA):
     motionThread.stop()
-    motionThread.join()
     motorRA.reset()
 
-# TEST
-#motor = Stepper(MICROSTEP, FORWARD)
-#steps = 3200
-
-# Inicializamos los motores
-#motor.reset()
+motionThread = None
 
 motorRA = Stepper(pwma_control, pwmb_control, a1_pin, a2_pin, b1_pin, b2_pin)
 #motorDEC = Stepper(MICROSTEP, FORWARD)
@@ -123,24 +133,28 @@ try:
         elif (opt == 3):
             newAstro = manualCoords()
         elif (opt == 4):
+            if (motionThread != None):
+                stopMotion(motionThread, motorRA)
             motionThread = move(currentAstro, newAstro, motorRA, motorDEC=None)
+            currentAstro = newAstro
         elif (opt == 5):
             stopMotion(motionThread, motorRA)
         elif (opt == 6):
+            if (motionThread != None):
+                stopMotion(motionThread, motorRA)
+ #               motionThread.join()
             motorRA.reset()
-            motorDEC.reset()
-            pwma.stop()
-            pwmb.stop()
+        #    motorDEC.reset()
             GPIO.cleanup()
             break
         else:
             print "Error"
 except KeyboardInterrupt:
-    stopMotion(motionThreadId, motorRA)
+    if (motionThread != None):
+        stopMotion(motionThread, motorRA)
+#        motionThread.join()
     motorRA.reset()
-    motorDEC.reset()
-    pwma.stop()
-    pwmb.stop()
+#    motorDEC.reset()
     GPIO.cleanup()
 
 

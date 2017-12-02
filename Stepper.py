@@ -5,17 +5,17 @@ import time
 import math
 import threading
  
-# Modos de funcionamiento
-SINGLE = 1
-DOUBLE = 2
-INTERLEAVE = 3
-MICROSTEP = 4
-
-# Direccion de movimiento
-FORWARD = 1
-BACK = -1
-
 class Stepper:
+    # Modos de funcionamiento
+    SINGLE = 1
+    DOUBLE = 2
+    INTERLEAVE = 3
+    MICROSTEP = 4
+    
+    # Direccion de movimiento
+    FORWARD = 1
+    BACK = -1
+
     MICROSTEPS = 16
     STEPS = 4
 #    MICROSTEPSEQ = [[1,0,0,1],[1,1,1,1],[0,1,0,1],[1,1,1,1],[0,1,1,0],[1,1,1,1],[1,0,1,0],[1,1,1,1]]
@@ -25,8 +25,8 @@ class Stepper:
     def __init__(self,pwma_control,pwmb_control,a1_pin,a2_pin,b1_pin,b2_pin):
         self.currentStep = 0
         self.currentMStep = 0
-        self.mode = SINGLE
-        self.dir = FORWARD
+        self.mode = self.SINGLE
+        self.dir = self.FORWARD
         self.stepCount = 0
         self.a1_pin = a1_pin
         self.a2_pin = a2_pin
@@ -54,7 +54,7 @@ class Stepper:
         self.mode = mode
 
     def setDirection(self,direction):
-        self.dir = direccion
+        self.dir = direction
 
     def setStep(self,coils):
 #        print coils
@@ -68,17 +68,17 @@ class Stepper:
         pwma_val = pwmb_val = 100
 
         # Control de pasos completos
-        if (self.mode == SINGLE):
+        if (self.mode == self.SINGLE):
             self.currentStep += self.dir
             self.stepCount += 1 
 
         # Control por micropasos
-        elif ((self.mode == MICROSTEP) and (not (self.currentMStep % self.MICROSTEPS))):
+        elif ((self.mode == self.MICROSTEP) and (not (self.currentMStep % self.MICROSTEPS))):
             #print "Paso..."+str(self.currentStep)
             self.currentStep += self.dir
             self.currentMStep += 1
             self.currentMStep %= self.MICROSTEPS
-        elif (self.mode == MICROSTEP and (self.currentMStep % self.MICROSTEPS)):
+        elif (self.mode == self.MICROSTEP and (self.currentMStep % self.MICROSTEPS)):
             self.currentMStep += 1
             self.currentMStep %= self.MICROSTEPS
 
