@@ -45,6 +45,7 @@ def manualCoords():
 #    dec = input("Introduzca la coordenada Declinacion (H-M-S): ")
     ra="5-22-32"
     ra="1-0-0"
+#    ra="2-31-50"
     dec="79-13-54"
 
     astro = Astro("test",ra,dec)
@@ -97,18 +98,13 @@ def move(currentAstro, newAstro, motorAR, motorDEC):
     motorRA.setMode(Stepper.MICROSTEP)
 
     track = Tracking(motorRA)
-    #trackingThread = track.run()
 
-    print "paso"
-
-#    return 0
     return track
 
 
 # Detiene el seguimiento
 def stopMotion(motionThread, motorRA):
     motionThread.stop()
-    motorRA.reset()
 
 motionThread = None
 
@@ -152,7 +148,6 @@ try:
 except KeyboardInterrupt:
     if (motionThread != None):
         stopMotion(motionThread, motorRA)
-#        motionThread.join()
     motorRA.reset()
 #    motorDEC.reset()
     GPIO.cleanup()

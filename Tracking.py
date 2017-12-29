@@ -17,7 +17,7 @@ class Tracking(threading.Thread):
 
     def stop(self):
         self.stopflag = True
-        self.join()
+        self.motor.reset()
 
     def track(self, motor):
         sleepTime = 0.062   # 1/16 segundos
@@ -26,4 +26,3 @@ class Tracking(threading.Thread):
         # Velocidad de seguimiento (16 micropasos/seg) = 1 paso por segundo
             self.motor.goStep()
             time.sleep(sleepTime)
-        self.motor.reset()
